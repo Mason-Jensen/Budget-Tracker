@@ -126,8 +126,6 @@ function renderSummary() {
 // RENDER: build (or rebuild) the spending-by-category chart
 // =========================================================
 function renderChart() {
-  // Add up expenses per category — only expenses count here,
-  // income doesn't belong in a "spending by category" chart
   const totalsByCategory = {};
   transactions.forEach((entry) => {
     if (entry.amount < 0) {
@@ -139,8 +137,6 @@ function renderChart() {
   const labels = Object.keys(totalsByCategory);
   const values = Object.values(totalsByCategory);
 
-  // If there's no expense data yet, show the empty message and
-  // skip drawing a chart
   if (labels.length === 0) {
     chartEmptyMessage.style.display = "block";
     chartCanvas.style.display = "none";
@@ -154,8 +150,6 @@ function renderChart() {
   chartEmptyMessage.style.display = "none";
   chartCanvas.style.display = "block";
 
-  // If a chart already exists, destroy it first so we don't end
-  // up drawing multiple charts on top of each other
   if (categoryChart) {
     categoryChart.destroy();
   }
@@ -243,8 +237,6 @@ form.addEventListener("submit", async function (event) {
     return;
   }
 
-  // Reload the full list from Supabase so we're always showing
-  // exactly what's actually saved
   await loadTransactions();
 
   form.reset();
@@ -256,6 +248,9 @@ form.addEventListener("submit", async function (event) {
 googleSignInButton.addEventListener("click", async function () {
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
+    options: {
+      redirectTo: "https://mason-jensen.github.io/Budget-Tracker/",
+    },
   });
   if (error) {
     console.error("Error signing in:", error);
@@ -289,7 +284,6 @@ function showLoggedInScreen(user) {
   loadTransactions();
 }
 
-// Check if someone is already logged in when the page first loads
 supabaseClient.auth.getSession().then(({ data: { session } }) => {
   if (session) {
     showLoggedInScreen(session.user);
@@ -298,8 +292,6 @@ supabaseClient.auth.getSession().then(({ data: { session } }) => {
   }
 });
 
-// Keep watching for login/logout events as they happen (for
-// example, right after the Google sign-in redirect completes)
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (session) {
     showLoggedInScreen(session.user);
