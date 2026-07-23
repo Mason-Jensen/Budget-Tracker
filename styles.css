@@ -381,7 +381,7 @@ body {
 
 .ledger-row {
   display: grid;
-  grid-template-columns: 60px 1fr 90px auto;
+  grid-template-columns: 60px 1fr 90px auto 32px;
   align-items: center;
   gap: 16px;
   padding: 14px 0;
@@ -417,18 +417,42 @@ body {
   border-top: 1px dashed var(--line);
 }
 
+.delete-button {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.delete-button:hover {
+  background: var(--paper);
+  color: var(--rust);
+}
+
+.delete-button:focus-visible {
+  outline: 2px solid var(--forest-light);
+  outline-offset: 1px;
+}
+
 /* Stack ledger rows on narrow screens */
 @media (max-width: 640px) {
   .ledger-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     grid-template-areas:
-      "desc amount"
-      "date category";
+      "desc amount delete"
+      "date category delete";
   }
   .entry-desc { grid-area: desc; }
   .entry-amount { grid-area: amount; }
   .entry-date { grid-area: date; }
   .entry-category { grid-area: category; text-align: right; }
+  .delete-button { grid-area: delete; }
 }
 
 /* =========================================================
