@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ledger — Budget Tracker</title>
+
+  <!-- Google Fonts: Fraunces (serif, for big display numbers/headings),
+       Inter (clean sans-serif, for everyday UI text),
+       IBM Plex Mono (monospace, for every dollar amount — this is our
+       "ledger" signature, like a real accounting sheet) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===================== LOGIN SCREEN ===================== -->
+  <!-- Shown only when nobody is logged in. script.js hides this
+       and shows #app-content once a user signs in. -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <p class="brand login-brand">Ledger</p>
+      <p class="login-subtitle">Track your income and expenses, privately.</p>
+      <button id="google-signin" class="google-button">
+        Sign in with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== APP CONTENT ===================== -->
+  <!-- Hidden until the user is logged in -->
+  <div id="app-content" style="display: none;">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="brand">Ledger</div>
+    <div class="user-bar">
+      <span id="user-email" class="user-email"></span>
+      <button id="sign-out" class="sign-out-button">Sign out</button>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- ===================== SUMMARY CARD ===================== -->
+    <!-- This is our "signature" element: a receipt-style card with a
+         torn/perforated top edge, showing the month's balance in a
+         big serif number, with income/expenses underneath in mono. -->
+    <section class="summary-card">
+      <div class="perforated-edge"></div>
+      <p class="summary-label">Balance this month</p>
+      <p class="summary-balance" id="summary-balance">+$1,240.50</p>
+      <div class="summary-split">
+        <div class="split-item">
+          <span class="split-label">Income</span>
+          <span class="split-value income" id="summary-income">$3,200.00</span>
+        </div>
+        <div class="split-divider"></div>
+        <div class="split-item">
+          <span class="split-label">Expenses</span>
+          <span class="split-value expense" id="summary-expenses">$1,959.50</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ADD TRANSACTION FORM ===================== -->
+    <section class="add-entry">
+      <h2 class="section-title">Add a transaction</h2>
+      <form class="entry-form" id="entry-form">
+        <div class="field">
+          <label for="desc">Description</label>
+          <input type="text" id="desc" name="desc" placeholder="Groceries" />
+        </div>
+        <div class="field field-amount">
+          <label for="amount">Amount</label>
+          <input type="text" id="amount" name="amount" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" name="category">
+            <option>Food</option>
+            <option>Rent</option>
+            <option>Transport</option>
+            <option>Income</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field field-type">
+          <label for="type">Type</label>
+          <select id="type" name="type">
+            <option>Expense</option>
+            <option>Income</option>
+          </select>
+        </div>
+        <button type="submit" class="add-button">Add entry</button>
+      </form>
+    </section>
+
+    <!-- ===================== RECENT ENTRIES (LEDGER LIST) ===================== -->
+    <section class="entries">
+      <h2 class="section-title">Recent entries</h2>
+      <div class="ledger" id="ledger-list">
+        <!-- Rows are added here automatically by script.js -->
+      </div>
+    </section>
+
+    <!-- ===================== SPENDING CHART ===================== -->
+    <section class="chart-section">
+      <h2 class="section-title">Spending by category</h2>
+      <div class="chart-box">
+        <canvas id="category-chart"></canvas>
+        <p id="chart-empty-message" class="chart-empty">No expenses yet — add one above to see your breakdown.</p>
+      </div>
+    </section>
+
+  </main>
+
+  </div>
+  <!-- end #app-content -->
+
+  <!-- Supabase's JavaScript library — lets our code talk to our
+       Supabase database -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Chart.js — draws our spending-by-category chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="script.js"></script>
+</body>
+</html>
