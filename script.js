@@ -88,6 +88,7 @@ function renderLedger() {
       <span class="entry-desc">${entry.desc}</span>
       <span class="entry-category">${entry.category}</span>
       <span class="entry-amount ${amountClass}">${sign}${formatMoney(entry.amount)}</span>
+      <button class="delete-button" data-id="${entry.id}" aria-label="Delete this entry">&times;</button>
     `;
     ledgerList.appendChild(row);
 
@@ -126,6 +127,8 @@ function renderSummary() {
 // RENDER: build (or rebuild) the spending-by-category chart
 // =========================================================
 function renderChart() {
+  // Add up expenses per category — only expenses count here,
+  // income doesn't belong in a "spending by category" chart
   const totalsByCategory = {};
   transactions.forEach((entry) => {
     if (entry.amount < 0) {
@@ -137,6 +140,8 @@ function renderChart() {
   const labels = Object.keys(totalsByCategory);
   const values = Object.values(totalsByCategory);
 
+  // If there's no expense data yet, show the empty message and
+  // skip drawing a chart
   if (labels.length === 0) {
     chartEmptyMessage.style.display = "block";
     chartCanvas.style.display = "none";
@@ -150,6 +155,8 @@ function renderChart() {
   chartEmptyMessage.style.display = "none";
   chartCanvas.style.display = "block";
 
+  // If a chart already exists, destroy it first so we don't end
+  // up drawing multiple charts on top of each other
   if (categoryChart) {
     categoryChart.destroy();
   }
@@ -237,9 +244,40 @@ form.addEventListener("submit", async function (event) {
     return;
   }
 
+  // Reload the full list from Supabase so we're always showing
+  // exactly what's actually saved
   await loadTransactions();
 
   form.reset();
+});
+
+// =========================================================
+// EVENT: click a delete button on any ledger row
+// We use "event delegation" here — one listener on the whole
+// list, instead of one listener per row — because rows get
+// added and removed dynamically.
+// =========================================================
+ledgerList.addEventListener("click", async function (event) {
+  const button = event.target.closest(".delete-button");
+  if (!button) return;
+
+  const confirmed = confirm("Delete this transaction? This can't be undone.");
+  if (!confirmed) return;
+
+  const idToDelete = button.getAttribute("data-id");
+
+  const { error } = await supabaseClient
+    .from("transactions")
+    .delete()
+    .eq("id", idToDelete);
+
+  if (error) {
+    console.error("Error deleting transaction:", error);
+    alert("Couldn't delete that transaction. Check the console for details.");
+    return;
+  }
+
+  await loadTransactions();
 });
 
 // =========================================================
@@ -284,6 +322,7 @@ function showLoggedInScreen(user) {
   loadTransactions();
 }
 
+// Check if someone is already logged in when the page first loads
 supabaseClient.auth.getSession().then(({ data: { session } }) => {
   if (session) {
     showLoggedInScreen(session.user);
@@ -292,6 +331,8 @@ supabaseClient.auth.getSession().then(({ data: { session } }) => {
   }
 });
 
+// Keep watching for login/logout events as they happen (for
+// example, right after the Google sign-in redirect completes)
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (session) {
     showLoggedInScreen(session.user);
