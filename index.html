@@ -17,8 +17,6 @@
 <body>
 
   <!-- ===================== LOGIN SCREEN ===================== -->
-  <!-- Shown only when nobody is logged in. script.js hides this
-       and shows #app-content once a user signs in. -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <p class="brand login-brand">Ledger</p>
@@ -30,7 +28,6 @@
   </div>
 
   <!-- ===================== APP CONTENT ===================== -->
-  <!-- Hidden until the user is logged in -->
   <div id="app-content" style="display: none;">
 
   <!-- ===================== HEADER ===================== -->
@@ -42,78 +39,120 @@
     </div>
   </header>
 
+  <!-- ===================== VIEW TABS ===================== -->
+  <nav class="view-tabs">
+    <button class="view-tab active" data-view="ledger-view" id="tab-ledger">This month</button>
+    <button class="view-tab" data-view="progress-view" id="tab-progress">Progress</button>
+  </nav>
+
   <main class="page">
 
-    <!-- ===================== SUMMARY CARD ===================== -->
-    <!-- This is our "signature" element: a receipt-style card with a
-         torn/perforated top edge, showing the month's balance in a
-         big serif number, with income/expenses underneath in mono. -->
-    <section class="summary-card">
-      <div class="perforated-edge"></div>
-      <p class="summary-label">Balance this month</p>
-      <p class="summary-balance" id="summary-balance">+$1,240.50</p>
-      <div class="summary-split">
-        <div class="split-item">
-          <span class="split-label">Income</span>
-          <span class="split-value income" id="summary-income">$3,200.00</span>
-        </div>
-        <div class="split-divider"></div>
-        <div class="split-item">
-          <span class="split-label">Expenses</span>
-          <span class="split-value expense" id="summary-expenses">$1,959.50</span>
-        </div>
-      </div>
-    </section>
+    <!-- ===================== LEDGER VIEW ===================== -->
+    <div id="ledger-view" class="view">
 
-    <!-- ===================== ADD TRANSACTION FORM ===================== -->
-    <section class="add-entry">
-      <h2 class="section-title">Add a transaction</h2>
-      <form class="entry-form" id="entry-form">
-        <div class="field">
-          <label for="desc">Description</label>
-          <input type="text" id="desc" name="desc" placeholder="Groceries" />
-        </div>
-        <div class="field field-amount">
-          <label for="amount">Amount</label>
-          <input type="text" id="amount" name="amount" placeholder="0.00" />
-        </div>
-        <div class="field">
-          <label for="category">Category</label>
-          <select id="category" name="category">
-            <option>Food</option>
-            <option>Rent</option>
-            <option>Transport</option>
-            <option>Income</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div class="field field-type">
-          <label for="type">Type</label>
-          <select id="type" name="type">
-            <option>Expense</option>
-            <option>Income</option>
-          </select>
-        </div>
-        <button type="submit" class="add-button">Add entry</button>
-      </form>
-    </section>
-
-    <!-- ===================== RECENT ENTRIES (LEDGER LIST) ===================== -->
-    <section class="entries">
-      <h2 class="section-title">Recent entries</h2>
-      <div class="ledger" id="ledger-list">
-        <!-- Rows are added here automatically by script.js -->
+      <!-- ===================== MONTH NAVIGATION ===================== -->
+      <div class="month-select">
+        <button class="month-arrow" id="prev-month" aria-label="Previous month">&#8249;</button>
+        <span class="month-label" id="month-label">July 2026</span>
+        <button class="month-arrow" id="next-month" aria-label="Next month">&#8250;</button>
       </div>
-    </section>
 
-    <!-- ===================== SPENDING CHART ===================== -->
-    <section class="chart-section">
-      <h2 class="section-title">Spending by category</h2>
-      <div class="chart-box">
-        <canvas id="category-chart"></canvas>
-        <p id="chart-empty-message" class="chart-empty">No expenses yet — add one above to see your breakdown.</p>
-      </div>
-    </section>
+      <!-- ===================== SUMMARY CARD ===================== -->
+      <section class="summary-card">
+        <div class="perforated-edge"></div>
+        <p class="summary-label">Balance this month</p>
+        <p class="summary-balance" id="summary-balance">+$1,240.50</p>
+        <div class="summary-split">
+          <div class="split-item">
+            <span class="split-label">Income</span>
+            <span class="split-value income" id="summary-income">$3,200.00</span>
+          </div>
+          <div class="split-divider"></div>
+          <div class="split-item">
+            <span class="split-label">Expenses</span>
+            <span class="split-value expense" id="summary-expenses">$1,959.50</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== ADD TRANSACTION FORM ===================== -->
+      <section class="add-entry">
+        <h2 class="section-title">Add a transaction</h2>
+        <form class="entry-form" id="entry-form">
+          <div class="field">
+            <label for="desc">Description</label>
+            <input type="text" id="desc" name="desc" placeholder="Groceries" />
+          </div>
+          <div class="field field-amount">
+            <label for="amount">Amount</label>
+            <input type="text" id="amount" name="amount" placeholder="0.00" />
+          </div>
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option>Food</option>
+              <option>Rent</option>
+              <option>Transport</option>
+              <option>Income</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field field-type">
+            <label for="type">Type</label>
+            <select id="type" name="type">
+              <option>Expense</option>
+              <option>Income</option>
+            </select>
+          </div>
+          <button type="submit" class="add-button">Add entry</button>
+        </form>
+      </section>
+
+      <!-- ===================== RECENT ENTRIES (LEDGER LIST) ===================== -->
+      <section class="entries">
+        <h2 class="section-title">Recent entries</h2>
+        <div class="ledger" id="ledger-list">
+          <!-- Rows are added here automatically by script.js -->
+        </div>
+      </section>
+
+      <!-- ===================== SPENDING CHART ===================== -->
+      <section class="chart-section">
+        <h2 class="section-title">Spending by category</h2>
+        <div class="chart-box">
+          <canvas id="category-chart"></canvas>
+          <p id="chart-empty-message" class="chart-empty">No expenses yet — add one above to see your breakdown.</p>
+        </div>
+      </section>
+
+    </div>
+    <!-- end #ledger-view -->
+
+    <!-- ===================== PROGRESS VIEW ===================== -->
+    <div id="progress-view" class="view" style="display: none;">
+
+      <section class="progress-cards">
+        <div class="progress-card">
+          <p class="summary-label">Total saved (all time)</p>
+          <p class="progress-number" id="total-saved">$0.00</p>
+        </div>
+        <div class="progress-card">
+          <p class="summary-label">This month vs last month</p>
+          <p class="progress-number" id="month-change">$0.00</p>
+          <p class="progress-subtext" id="month-change-note">No data yet</p>
+        </div>
+      </section>
+
+      <section class="chart-section">
+        <h2 class="section-title">Savings trend (last 6 months)</h2>
+        <div class="chart-box">
+          <canvas id="trend-chart"></canvas>
+          <p id="trend-empty-message" class="chart-empty">Add some transactions to see your trend.</p>
+        </div>
+      </section>
+
+    </div>
+    <!-- end #progress-view -->
 
   </main>
 
