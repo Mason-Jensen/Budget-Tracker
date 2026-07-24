@@ -1,9 +1,5 @@
 // =========================================================
 // SUPABASE CONNECTION
-// These two values connect our app to YOUR Supabase project.
-// The "publishable" key is safe to use here in the browser —
-// it's designed for exactly this. (Never put a "secret" key
-// in front-end code like this.)
 // =========================================================
 const SUPABASE_URL = "https://uirbigmcseyqhnrbdqow.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Secc0hTH27nxK_3RPhJGvw_sqtDgiGA";
@@ -12,11 +8,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =========================================================
 // DATA
-// This array holds the transactions currently shown on screen.
-// It gets filled from Supabase when the page loads, and
-// updated whenever we add a new entry.
 // =========================================================
-let transactions = [];
+let allTransactions = [];
+let currentMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 // =========================================================
 // GRAB THE PAGE ELEMENTS WE'LL NEED TO UPDATE
@@ -34,18 +28,26 @@ const googleSignInButton = document.getElementById("google-signin");
 const signOutButton = document.getElementById("sign-out");
 const userEmailLabel = document.getElementById("user-email");
 
-// Keeps track of the current Chart.js chart instance, so we can
-// destroy it before drawing a new one (otherwise old charts pile
-// up on top of each other every time data changes)
-let categoryChart = null;
+const prevMonthButton = document.getElementById("prev-month");
+const nextMonthButton = document.getElementById("next-month");
+const monthLabel = document.getElementById("month-label");
 
-// A small set of colors pulled from our own palette, used in order
-// as we draw slices for each category
+const tabLedger = document.getElementById("tab-ledger");
+const tabProgress = document.getElementById("tab-progress");
+const ledgerView = document.getElementById("ledger-view");
+const progressView = document.getElementById("progress-view");
+
+const totalSavedLabel = document.getElementById("total-saved");
+const monthChangeLabel = document.getElementById("month-change");
+const monthChangeNote = document.getElementById("month-change-note");
+const trendCanvas = document.getElementById("trend-chart");
+const trendEmptyMessage = document.getElementById("trend-empty-message");
+
+let categoryChart = null;
+let trendChart = null;
+
 const CHART_COLORS = ["#A8452F", "#8A6D1F", "#1F4A3D", "#2F6B57", "#5B6156"];
 
-// =========================================================
-// HELPER: format a number as money, e.g. 1234.5 -> "$1,234.50"
-// =========================================================
 function formatMoney(amount) {
   const absolute = Math.abs(amount).toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -54,29 +56,36 @@ function formatMoney(amount) {
   return "$" + absolute;
 }
 
-// =========================================================
-// HELPER: turn a database timestamp into a short label
-// like "Jul 22"
-// =========================================================
 function formatDateLabel(timestamp) {
   const date = new Date(timestamp);
   const options = { month: "short", day: "numeric" };
   return date.toLocaleDateString("en-US", options);
 }
 
-// =========================================================
-// RENDER: rebuild the ledger list on screen from the
-// `transactions` array.
-// =========================================================
+function getTransactionsForMonth(monthDate) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+
+  return allTransactions.filter((entry) => {
+    const entryDate = new Date(entry.created_at);
+    return entryDate.getFullYear() === year && entryDate.getMonth() === month;
+  });
+}
+
+function getNetTotal(transactionList) {
+  return transactionList.reduce((total, entry) => total + entry.amount, 0);
+}
+
 function renderLedger() {
+  const monthTransactions = getTransactionsForMonth(currentMonthDate);
   ledgerList.innerHTML = "";
 
-  if (transactions.length === 0) {
-    ledgerList.innerHTML = '<p style="color: var(--ink-soft); padding: 16px 0;">No transactions yet — add your first one above.</p>';
+  if (monthTransactions.length === 0) {
+    ledgerList.innerHTML = '<p style="color: var(--ink-soft); padding: 16px 0;">No transactions this month — add your first one above.</p>';
     return;
   }
 
-  transactions.forEach((entry, index) => {
+  monthTransactions.forEach((entry, index) => {
     const isExpense = entry.amount < 0;
     const sign = isExpense ? "\u2212" : "+";
     const amountClass = isExpense ? "expense" : "income";
@@ -92,7 +101,7 @@ function renderLedger() {
     `;
     ledgerList.appendChild(row);
 
-    if (index < transactions.length - 1) {
+    if (index < monthTransactions.length - 1) {
       const rule = document.createElement("div");
       rule.className = "ledger-rule";
       ledgerList.appendChild(rule);
@@ -100,14 +109,13 @@ function renderLedger() {
   });
 }
 
-// =========================================================
-// RENDER: recalculate and display the summary card totals
-// =========================================================
 function renderSummary() {
+  const monthTransactions = getTransactionsForMonth(currentMonthDate);
+
   let income = 0;
   let expenses = 0;
 
-  transactions.forEach((entry) => {
+  monthTransactions.forEach((entry) => {
     if (entry.amount >= 0) {
       income += entry.amount;
     } else {
@@ -123,14 +131,11 @@ function renderSummary() {
   summaryExpenses.textContent = formatMoney(expenses);
 }
 
-// =========================================================
-// RENDER: build (or rebuild) the spending-by-category chart
-// =========================================================
 function renderChart() {
-  // Add up expenses per category — only expenses count here,
-  // income doesn't belong in a "spending by category" chart
+  const monthTransactions = getTransactionsForMonth(currentMonthDate);
+
   const totalsByCategory = {};
-  transactions.forEach((entry) => {
+  monthTransactions.forEach((entry) => {
     if (entry.amount < 0) {
       const categoryTotal = totalsByCategory[entry.category] || 0;
       totalsByCategory[entry.category] = categoryTotal + Math.abs(entry.amount);
@@ -140,8 +145,6 @@ function renderChart() {
   const labels = Object.keys(totalsByCategory);
   const values = Object.values(totalsByCategory);
 
-  // If there's no expense data yet, show the empty message and
-  // skip drawing a chart
   if (labels.length === 0) {
     chartEmptyMessage.style.display = "block";
     chartCanvas.style.display = "none";
@@ -155,8 +158,6 @@ function renderChart() {
   chartEmptyMessage.style.display = "none";
   chartCanvas.style.display = "block";
 
-  // If a chart already exists, destroy it first so we don't end
-  // up drawing multiple charts on top of each other
   if (categoryChart) {
     categoryChart.destroy();
   }
@@ -190,9 +191,130 @@ function renderChart() {
   });
 }
 
-// =========================================================
-// LOAD: fetch all transactions from Supabase, newest first
-// =========================================================
+function renderMonthLabel() {
+  const options = { month: "long", year: "numeric" };
+  monthLabel.textContent = currentMonthDate.toLocaleDateString("en-US", options);
+}
+
+function renderProgress() {
+  const totalSaved = getNetTotal(allTransactions);
+  const totalSign = totalSaved >= 0 ? "+" : "\u2212";
+  totalSavedLabel.textContent = totalSign + formatMoney(totalSaved);
+  totalSavedLabel.style.color = totalSaved >= 0 ? "var(--forest)" : "var(--rust)";
+
+  const thisMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1);
+  const lastMonthDate = new Date(thisMonthDate.getFullYear(), thisMonthDate.getMonth() - 1, 1);
+
+  const thisMonthNet = getNetTotal(getTransactionsForMonth(thisMonthDate));
+  const lastMonthNet = getNetTotal(getTransactionsForMonth(lastMonthDate));
+  const change = thisMonthNet - lastMonthNet;
+
+  const changeSign = change >= 0 ? "+" : "\u2212";
+  monthChangeLabel.textContent = changeSign + formatMoney(change);
+  monthChangeLabel.style.color = change >= 0 ? "var(--forest)" : "var(--rust)";
+
+  if (change > 0) {
+    monthChangeNote.textContent = "You saved more than last month — nice work.";
+  } else if (change < 0) {
+    monthChangeNote.textContent = "You saved less than last month.";
+  } else {
+    monthChangeNote.textContent = "Same as last month.";
+  }
+
+  const monthLabels = [];
+  const monthNets = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(thisMonthDate.getFullYear(), thisMonthDate.getMonth() - i, 1);
+    const label = d.toLocaleDateString("en-US", { month: "short" });
+    const net = getNetTotal(getTransactionsForMonth(d));
+    monthLabels.push(label);
+    monthNets.push(net);
+  }
+
+  const hasAnyData = monthNets.some((n) => n !== 0);
+
+  if (!hasAnyData) {
+    trendEmptyMessage.style.display = "block";
+    trendCanvas.style.display = "none";
+    if (trendChart) {
+      trendChart.destroy();
+      trendChart = null;
+    }
+    return;
+  }
+
+  trendEmptyMessage.style.display = "none";
+  trendCanvas.style.display = "block";
+
+  if (trendChart) {
+    trendChart.destroy();
+  }
+
+  trendChart = new Chart(trendCanvas, {
+    type: "line",
+    data: {
+      labels: monthLabels,
+      datasets: [
+        {
+          label: "Net savings",
+          data: monthNets,
+          borderColor: "#1F4A3D",
+          backgroundColor: "rgba(31, 74, 61, 0.1)",
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: "#1F4A3D",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: (value) => "$" + value,
+          },
+        },
+      },
+    },
+  });
+}
+
+prevMonthButton.addEventListener("click", function () {
+  currentMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1);
+  renderMonthLabel();
+  renderLedger();
+  renderSummary();
+  renderChart();
+});
+
+nextMonthButton.addEventListener("click", function () {
+  currentMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1);
+  renderMonthLabel();
+  renderLedger();
+  renderSummary();
+  renderChart();
+});
+
+tabLedger.addEventListener("click", function () {
+  tabLedger.classList.add("active");
+  tabProgress.classList.remove("active");
+  ledgerView.style.display = "block";
+  progressView.style.display = "none";
+});
+
+tabProgress.addEventListener("click", function () {
+  tabProgress.classList.add("active");
+  tabLedger.classList.remove("active");
+  progressView.style.display = "block";
+  ledgerView.style.display = "none";
+  renderProgress();
+});
+
 async function loadTransactions() {
   const { data, error } = await supabaseClient
     .from("transactions")
@@ -205,16 +327,17 @@ async function loadTransactions() {
     return;
   }
 
-  transactions = data;
+  allTransactions = data;
+  renderMonthLabel();
   renderLedger();
   renderSummary();
   renderChart();
+
+  if (progressView.style.display !== "none") {
+    renderProgress();
+  }
 }
 
-// =========================================================
-// EVENT: when the form is submitted, save a new transaction
-// to Supabase, then reload the list
-// =========================================================
 form.addEventListener("submit", async function (event) {
   event.preventDefault();
 
@@ -244,19 +367,10 @@ form.addEventListener("submit", async function (event) {
     return;
   }
 
-  // Reload the full list from Supabase so we're always showing
-  // exactly what's actually saved
   await loadTransactions();
-
   form.reset();
 });
 
-// =========================================================
-// EVENT: click a delete button on any ledger row
-// We use "event delegation" here — one listener on the whole
-// list, instead of one listener per row — because rows get
-// added and removed dynamically.
-// =========================================================
 ledgerList.addEventListener("click", async function (event) {
   const button = event.target.closest(".delete-button");
   if (!button) return;
@@ -280,9 +394,6 @@ ledgerList.addEventListener("click", async function (event) {
   await loadTransactions();
 });
 
-// =========================================================
-// AUTH: sign in with Google
-// =========================================================
 googleSignInButton.addEventListener("click", async function () {
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
@@ -296,9 +407,6 @@ googleSignInButton.addEventListener("click", async function () {
   }
 });
 
-// =========================================================
-// AUTH: sign out
-// =========================================================
 signOutButton.addEventListener("click", async function () {
   const { error } = await supabaseClient.auth.signOut();
   if (error) {
@@ -306,10 +414,6 @@ signOutButton.addEventListener("click", async function () {
   }
 });
 
-// =========================================================
-// AUTH: show the right screen based on whether someone is
-// logged in, and load their data if so
-// =========================================================
 function showLoggedOutScreen() {
   loginScreen.style.display = "flex";
   appContent.style.display = "none";
@@ -322,7 +426,6 @@ function showLoggedInScreen(user) {
   loadTransactions();
 }
 
-// Check if someone is already logged in when the page first loads
 supabaseClient.auth.getSession().then(({ data: { session } }) => {
   if (session) {
     showLoggedInScreen(session.user);
@@ -331,8 +434,6 @@ supabaseClient.auth.getSession().then(({ data: { session } }) => {
   }
 });
 
-// Keep watching for login/logout events as they happen (for
-// example, right after the Google sign-in redirect completes)
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (session) {
     showLoggedInScreen(session.user);
